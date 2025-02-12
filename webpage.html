@@ -50,11 +50,16 @@
             sendRequest("/release");
         }
 
+        function sendJoystickPosition(x, y) {
+            sendRequest(`/joystick?x=${x}&y=${y}`);
+        }
+
         function initJoystick() {
             const joystick = document.getElementById('joystick');
             const knob = document.getElementById('knob');
             const output = document.getElementById('output');
             let dragging = false;
+            let lastSent = 0;
 
             joystick.addEventListener('mousedown', startDrag);
             joystick.addEventListener('touchstart', startDrag);
@@ -72,6 +77,10 @@
 
             function drag(event) {
                 if (!dragging) return;
+                const now = Date.now();
+                if (now - lastSent < 50) return;
+                lastSent = now;
+
                 const rect = joystick.getBoundingClientRect();
                 const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
                 const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
@@ -88,19 +97,30 @@
                 const normalizedX = (knobX - centerX) / centerX;
                 const normalizedY = (knobY - centerY) / centerY;
                 output.textContent = `X: ${normalizedX.toFixed(2)}, Y: ${normalizedY.toFixed(2)}`;
+                sendJoystickPosition(normalizedX.toFixed(2), normalizedY.toFixed(2));
             }
 
-            function endDrag() {
+            function endDrag(event) {
+                if (event.touches && event.touches.length > 0) return; // Prevent resetting if there are still touches
                 dragging = false;
                 knob.style.left = '50%';
                 knob.style.top = '50%';
                 output.textContent = 'X: 0.00, Y: 0.00';
+                sendJoystickPosition(0.00, 0.00);
             }
         }
 
         window.onload = function() {
             initJoystick();
             const button = document.querySelector('.button');
+            button.addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                buttonPress();
+            });
+            button.addEventListener('mouseup', function(event) {
+                event.preventDefault();
+                buttonRelease();
+            });
             button.addEventListener('touchstart', function(event) {
                 event.preventDefault();
                 buttonPress();
@@ -118,7 +138,7 @@
     </div>
     <div id="output">X: 0.00, Y: 0.00</div>
     <div>
-        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()">Toggle LED</button>
+        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()" ontouchend="buttonRelease()">Toggle LED</button>
     </div>
 </body>
 </html>

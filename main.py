@@ -46,6 +46,15 @@ while True:
         elif '/release' in request:
             led.value(1)  # Turn off LED
         
+        # Handle joystick position updates
+        if '/joystick' in request:
+            _, params = request.split('?', 1)
+            params = params.split(' ')[0]
+            x, y = params.split('&')
+            x = float(x.split('=')[1])
+            y = float(y.split('=')[1])
+            print(f'Joystick position - X: {x}, Y: {y}')
+        
         # Send response
         cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
         cl.send(html)
