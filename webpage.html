@@ -9,24 +9,24 @@
             background-color: #4CAF50;
             border: none;
             color: white;
-            padding: 15px 32px;
+            padding: 72px; /* Changed to make the button square */
             text-align: center;
             font-size: 16px;
-            margin: 4px 2px;
+            margin: 10px;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 8px;
         }
         #joystick {
-            width: 250px;  /* Increased by 25% */
-            height: 250px; /* Increased by 25% */
+            width: 300px;  /* Increased by 25% */
+            height: 300px; /* Increased by 25% */
             background-color: #ddd;
             border-radius: 50%;
             position: relative;
             touch-action: none;
         }
         #knob {
-            width: 75px;  /* Increased by 25% */
-            height: 75px; /* Increased by 25% */
+            width: 100px;  /* Increased by 25% */
+            height: 100px; /* Increased by 25% */
             background-color: #4CAF50;
             border-radius: 50%;
             position: absolute;
@@ -138,7 +138,7 @@
     </div>
     <div id="output">X: 0.00, Y: 0.00</div>
     <div>
-        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()" ontouchend="buttonRelease()">Toggle LED</button>
+        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()" ontouchend="buttonRelease()"></button>
     </div>
 </body>
 </html>
