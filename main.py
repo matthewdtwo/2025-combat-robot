@@ -20,6 +20,16 @@ s.listen(1)
 
 print('Listening on', addr)
 
+
+# setup motors
+
+from motor import Motor
+# esp32c3 pins
+motor_left = Motor(in1=0, in2=1, ena=2) # gray, purple, blue
+motor_right = Motor(in1=21, in2=20, ena=10) # green, yellow, orange
+
+
+
 # Main server loop
 while True:
     try:
@@ -42,6 +52,10 @@ while True:
             x = float(x.split('=')[1])
             y = float(y.split('=')[1])
             print(f'Joystick position - X: {x}, Y: {y}')
+
+            # Configure motors
+            motor_left.move(x, y)
+            motor_right.move(x, y)
         
         # Send response
         cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
