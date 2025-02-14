@@ -1,15 +1,16 @@
 from machine import Pin, PWM
 
 class Motor():
-    def __init__(self, in1, in2, ena):
+    def __init__(self, in1, in2, ena, is_left_motor=True):
         self.in1 = in1
         self.in2 = in2
         self.ena = ena
         self.in1_pin = Pin(in1, Pin.OUT)
         self.in2_pin = Pin(in2, Pin.OUT)
-        self.ena_pin = PWM(ena, freq=500, duty=0)
+        self.ena_pin = PWM(ena, freq=100, duty=0)
         self.in1_pin.value(0)
         self.in2_pin.value(0)
+        self.is_left_motor = is_left_motor
 
     def forward(self, speed):
         # scale speed between 0 and 1023
@@ -37,19 +38,38 @@ class Motor():
         x = max(-1, min(1, x))
         y = max(-1, min(1, y))
 
-        # Calculate speed for each motor
-        left_speed = (y + x) * 50  # Scale to percentage
-        right_speed = (y - x) * 50  # Scale to percentage
+        # Calculate base speed from y component
+        speed = abs(y) * 100
+        turn = abs(x) * 100
 
-        # Determine direction and set motor speeds
-        if left_speed > 0:
-            self.forward(left_speed)
+        # Calculate motor speed based on whether it's left or right motor
+        motor_speed = speed
+        if x != 0:  # Turning
+            if self.is_left_motor:
+                if x < 0:  # Turning left
+                    motor_speed = -turn
+                elif x > 0:  # Turning right
+                    motor_speed = turn
+            else:  # Right motor
+                if x < 0:  # Turning left
+                    motor_speed = turn
+                elif x > 0:  # Turning right
+                    motor_speed = -turn
+
+        # If moving forward/backward, override turn speed
+        if abs(y) > abs(x):
+            motor_speed = speed if y > 0 else -speed
+
+        # Set motor direction and speed
+        if motor_speed > 0:
+            self.in1_pin.value(1)
+            self.in2_pin.value(0)
         else:
-            self.reverse(-left_speed)
+            self.in1_pin.value(0)
+            self.in2_pin.value(1)
 
-        if right_speed > 0:
-            self.forward(right_speed)
-        else:
-            self.reverse(-right_speed)
+        # Convert speed to PWM duty cycle
+        pwm_duty = int(abs(motor_speed) * 1023 / 100)
+        self.ena_pin.duty(pwm_duty)
 
-        return left_speed, right_speed
+        return motor_speed, pwm_duty

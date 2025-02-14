@@ -25,8 +25,8 @@ print('Listening on', addr)
 
 from motor import Motor
 # esp32c3 pins
-motor_left = Motor(in1=0, in2=1, ena=2) # gray, purple, blue
-motor_right = Motor(in1=21, in2=20, ena=10) # green, yellow, orange
+motor_left = Motor(in1=0, in2=1, ena=2, is_left_motor=True) # gray, purple, blue
+motor_right = Motor(in1=21, in2=20, ena=10, is_left_motor=False) # green, yellow, orange
 
 
 
@@ -53,9 +53,10 @@ while True:
             y = float(y.split('=')[1])
             print(f'Joystick position - X: {x}, Y: {y}')
 
-            # Configure motors
-            motor_left.move(x, y)
-            motor_right.move(x, y)
+            # Configure motors - note that y is inverted
+            left_speed, _ = motor_left.move(x, -y)
+            right_speed, _ = motor_right.move(x, -y)
+            print(f'Motor speeds - Left: {left_speed}, Right: {right_speed}')
         
         # Send response
         cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
