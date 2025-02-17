@@ -39,39 +39,30 @@ class Motor():
         x = max(-1, min(1, x))
         y = max(-1, min(1, y))
 
-        # Calculate base forward/reverse speed from y component
-        base_speed = y * 100
-        
-        # Determine if this is the inside or outside wheel in the turn
-        # Inverted logic: positive X = turn right, so right wheel is inside
-        is_inside_wheel = (x > 0 and not self.is_left_motor) or (x < 0 and self.is_left_motor)
-        turn_amount = abs(x)
-        
-        if abs(y) > 0.1:  # Moving forward/backward with turn
-            if is_inside_wheel:
-                # Inside wheel: gradually reduce speed, only reverse at high turn values
-                if turn_amount > 0.7:  # Threshold for reversing
-                    motor_speed = base_speed * (-1 * (turn_amount - 0.7) / 0.3)  # Gradual reverse
-                else:
-                    motor_speed = base_speed * (1 - turn_amount)  # Gradual slowdown
-            else:
-                # Outside wheel: maintain full power
-                motor_speed = base_speed
-        else:  # Pure rotation (no forward/backward motion)
-            if is_inside_wheel:
-                motor_speed = -100 * turn_amount
-            else:
-                motor_speed = 100 * turn_amount
+        # Apply exponential curve to steering input while preserving sign
+        x = (abs(x) ** 2) * (1 if x >= 0 else -1)
 
-        # Set motor direction and speed
-        if motor_speed > 0:
+        # Calculate motor speeds with intermediate clamping
+        if self.is_left_motor:
+            motor_speed = y + x
+        else:
+            motor_speed = y - x
+            
+        # Scale to percentage (-100 to 100)
+        motor_speed = motor_speed * 100
+        
+        # Clamp the final speed to ±100
+        motor_speed = max(-100, min(100, motor_speed))
+
+        # Set motor direction and speed based on the sign of motor_speed
+        if motor_speed >= 0:
             self.in1_pin.value(1)
             self.in2_pin.value(0)
         else:
             self.in1_pin.value(0)
             self.in2_pin.value(1)
 
-        # Convert speed to PWM duty cycle
+        # Convert speed to PWM duty cycle (use absolute value)
         pwm_duty = int(abs(motor_speed) * 1023 / 100)
         self.ena_pin.duty(pwm_duty)
         

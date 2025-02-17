@@ -1,10 +1,9 @@
 # boot.py -- run on boot-up
+import network
 from machine import Pin, PWM
+from time import sleep
 
 from leds import GREEN, RED, WIFI_AP_ACTIVE, set_leds, wake_animation
-import network
-
-from time import sleep
 
 WEAPON_OFF = 98
 
@@ -32,4 +31,3 @@ if ap.active():
 
 print('Access Point active')
 print('Network config:', ap.ifconfig())
-
