@@ -16,6 +16,11 @@
             cursor: pointer;
             border-radius: 8px;
         }
+        .button.disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
         #joystick {
             width: 300px;  /* Increased by 25% */
             height: 300px; /* Increased by 25% */
@@ -74,8 +79,16 @@
             const joystick = document.getElementById('joystick');
             const knob = document.getElementById('knob');
             const output = document.getElementById('output');
+            const button = document.querySelector('.button');
             let dragging = false;
             let lastSent = 0;
+
+            // Start with button disabled
+            button.classList.add('disabled');
+
+            function setButtonState(enabled) {
+                button.classList.toggle('disabled', !enabled);
+            }
 
             joystick.addEventListener('mousedown', startDrag);
             joystick.addEventListener('touchstart', startDrag);
@@ -88,6 +101,7 @@
 
             function startDrag(event) {
                 dragging = true;
+                setButtonState(true);  // Enable button when starting to use joystick
                 event.preventDefault();
             }
 
@@ -119,6 +133,7 @@
             function endDrag(event) {
                 if (event.touches && event.touches.length > 0) return; // Prevent resetting if there are still touches
                 dragging = false;
+                setButtonState(false);  // Disable button when joystick is released
                 knob.style.left = '50%';
                 knob.style.top = '50%';
                 output.textContent = 'X: 0.00, Y: 0.00';
