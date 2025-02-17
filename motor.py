@@ -11,6 +11,7 @@ class Motor():
         self.in1_pin.value(0)
         self.in2_pin.value(0)
         self.is_left_motor = is_left_motor
+        self.current_speed = 0.0
 
     def forward(self, speed):
         # scale speed between 0 and 1023
@@ -71,5 +72,7 @@ class Motor():
         # Convert speed to PWM duty cycle
         pwm_duty = int(abs(motor_speed) * 1023 / 100)
         self.ena_pin.duty(pwm_duty)
+
+        self.current_speed = speed  # Store the current speed
 
         return motor_speed, pwm_duty

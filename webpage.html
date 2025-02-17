@@ -34,24 +34,42 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+        #status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .connected { background: #4CAF50; color: white; }
+        .disconnected { background: #f44336; color: white; }
+        #status-display {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border-radius: 5px;
+            text-align: left;
+            font-family: monospace;
+        }
     </style>
     <script>
-        function sendRequest(url) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            xhr.send();
+        function sendCommand(url) {
+            fetch(url).catch(err => console.error('Command error:', err));
         }
 
         function buttonPress() {
-            sendRequest("/press");
+            sendCommand('/button/press');
         }
 
         function buttonRelease() {
-            sendRequest("/release");
+            sendCommand('/button/release');
         }
 
         function sendJoystickPosition(x, y) {
-            sendRequest(`/joystick?x=${x}&y=${y}`);
+            sendCommand(`/joystick/${x}/${y}`);
         }
 
         function initJoystick() {
@@ -110,6 +128,27 @@
             }
         }
 
+        let statusInterval;
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/status');
+                const status = await response.json();
+                
+                // Update LED status
+                document.getElementById('led-status').textContent = 
+                    status.led ? 'ON' : 'OFF';
+                
+                // Update motor speeds
+                document.getElementById('left-motor').textContent = 
+                    status.motors.left.toFixed(2);
+                document.getElementById('right-motor').textContent = 
+                    status.motors.right.toFixed(2);
+            } catch (err) {
+                console.error('Status error:', err);
+            }
+        }
+
         window.onload = function() {
             initJoystick();
             const button = document.querySelector('.button');
@@ -129,16 +168,29 @@
                 event.preventDefault();
                 buttonRelease();
             });
+            
+            // Start status polling
+            statusInterval = setInterval(updateStatus, 100);
+        };
+
+        window.onunload = function() {
+            clearInterval(statusInterval);
         };
     </script>
 </head>
 <body>
+    <div id="status" class="disconnected">Disconnected</div>
     <div id="joystick">
         <div id="knob"></div>
     </div>
     <div id="output">X: 0.00, Y: 0.00</div>
     <div>
         <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()" ontouchend="buttonRelease()"></button>
+    </div>
+    <div id="status-display">
+        LED: <span id="led-status">OFF</span><br>
+        Left Motor: <span id="left-motor">0.00</span><br>
+        Right Motor: <span id="right-motor">0.00</span>
     </div>
 </body>
 </html>
