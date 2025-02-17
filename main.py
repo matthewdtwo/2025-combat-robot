@@ -2,10 +2,7 @@ import machine
 import socket
 import json
 from time import sleep, ticks_ms, ticks_diff
-
-# Set up LED on pin 8 (active low)
-led = machine.Pin(8, machine.Pin.OUT)
-led.value(1)  # Turn off LED initially (active low)
+from leds import OFF, RED, WEAPON, WIFI_AP_ACTIVE, GREEN, BLUE, set_leds
 
 # Load HTML template from file
 with open('webpage.html', 'r') as file:
@@ -17,13 +14,21 @@ from motor import Motor
 motor_left = Motor(in1=0, in2=1, ena=2, is_left_motor=True)
 motor_right = Motor(in1=21, in2=20, ena=10, is_left_motor=False)
 
+
+# setup weapon
+led = machine.Pin(8, machine.Pin.OUT)
+LED_ARMED = False
+WEAPON_ACTIVE = False
+
 # Constants for watchdog
 WATCHDOG_TIMEOUT = 500  # 500ms timeout
 last_command_time = ticks_ms()
 
+
 def stop_motors():
     motor_left.stop()
     motor_right.stop()
+
 
 def check_watchdog(timer):
     global last_command_time
@@ -34,6 +39,36 @@ def check_watchdog(timer):
 watchdog = machine.Timer(0)
 watchdog.init(period=100, mode=machine.Timer.PERIODIC, callback=check_watchdog)
 
+def check_wifi_connection(timer):
+    global LED_ARMED
+    ap_connected = ap.isconnected()
+    set_leds(WIFI_AP_ACTIVE, BLUE if ap_connected else GREEN)
+    LED_ARMED = ap_connected
+
+
+check_wifi = machine.Timer(1)
+check_wifi.init(period=250, mode=machine.Timer.PERIODIC, callback=check_wifi_connection)
+
+
+def check_weapon_status(timer):
+    global LED_ARMED
+    global weapon_servo
+
+    if WEAPON_ACTIVE and LED_ARMED:
+        set_leds(WEAPON, BLUE if LED_ARMED else RED)
+        print('Weapon Active')
+        weapon_servo.duty(WEAPON_ON)
+        led.value(0)
+    else:
+        set_leds(WEAPON, GREEN if LED_ARMED else RED)
+        weapon_servo.duty(WEAPON_OFF)
+        led.value(1)
+
+weapon_timer = machine.Timer(2)
+weapon_timer.init(period=200, mode=machine.Timer.PERIODIC, callback=check_weapon_status)
+
+
+
 def send_html(client, html):
     client.send('HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n')
     for i in range(0, len(html), 512):
@@ -41,7 +76,8 @@ def send_html(client, html):
 
 def get_status():
     return json.dumps({
-        'led': not bool(led.value()),  # Invert since LED is active low
+        # 'led': not bool(led.value()),  # Invert since LED is active low
+        'led': not led.value(),
         'motors': {
             'left': motor_left.current_speed,
             'right': motor_right.current_speed
@@ -49,15 +85,21 @@ def get_status():
     })
 
 def handle_command(path):
-    global last_command_time
+    global last_command_time, WEAPON_ACTIVE  # Add WEAPON_ACTIVE as global
     try:
         if path == '/status':
             return get_status()
         elif path.startswith('/button/'):
             last_command_time = ticks_ms()
             state = path.split('/')[-1]
-            led.value(0 if state == 'press' else 1)
+            if state == 'press':
+                # on
+                WEAPON_ACTIVE = True
+            else:
+                # off
+                WEAPON_ACTIVE = False
             return 'OK'
+        
         elif path.startswith('/joystick/'):
             last_command_time = ticks_ms()
             _, x, y = path.split('/')[-3:]
@@ -81,7 +123,7 @@ while True:
     try:
         cl, addr = s.accept()
         request = cl.recv(1024).decode()
-        
+
         if 'GET / ' in request:
             send_html(cl, html)
         elif 'GET /status' in request or 'GET /button/' in request or 'GET /joystick/' in request:
