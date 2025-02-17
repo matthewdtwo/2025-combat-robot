@@ -22,22 +22,34 @@
             pointer-events: none;
         }
         #joystick {
-            width: 300px;  /* Increased by 25% */
-            height: 300px; /* Increased by 25% */
+            width: 400px;  /* Increased size */
+            height: 400px;
             background-color: #ddd;
             border-radius: 50%;
             position: relative;
             touch-action: none;
         }
         #knob {
-            width: 100px;  /* Increased by 25% */
-            height: 100px; /* Increased by 25% */
+            width: 120px;  /* Increased proportionally */
+            height: 120px;
             background-color: #4CAF50;
             border-radius: 50%;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+        }
+        /* Add deadzone indicator */
+        #deadzone {
+            width: 80px;
+            height: 80px;
+            border: 2px dashed #999;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
         #status {
             position: fixed;
@@ -82,6 +94,7 @@
             const button = document.querySelector('.button');
             let dragging = false;
             let lastSent = 0;
+            const DEADZONE = 0.15; // 15% deadzone
 
             // Start with button disabled
             button.classList.add('disabled');
@@ -122,10 +135,27 @@
                 const angle = Math.atan2(dy, dx);
                 const knobX = centerX + distance * Math.cos(angle);
                 const knobY = centerY + distance * Math.sin(angle);
+
+                // Set knob position
                 knob.style.left = `${knobX}px`;
                 knob.style.top = `${knobY}px`;
-                const normalizedX = (knobX - centerX) / centerX;
-                const normalizedY = (knobY - centerY) / centerY;
+
+                // Calculate normalized values with deadzone
+                let normalizedX = (knobX - centerX) / centerX;
+                let normalizedY = (knobY - centerY) / centerY;
+                
+                // Apply deadzone
+                const magnitude = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+                if (magnitude < DEADZONE) {
+                    normalizedX = 0;
+                    normalizedY = 0;
+                } else {
+                    // Rescale values after deadzone
+                    const scale = (magnitude - DEADZONE) / (1 - DEADZONE);
+                    normalizedX = (normalizedX / magnitude) * scale;
+                    normalizedY = (normalizedY / magnitude) * scale;
+                }
+
                 output.textContent = `X: ${normalizedX.toFixed(2)}, Y: ${normalizedY.toFixed(2)}`;
                 sendJoystickPosition(normalizedX.toFixed(2), normalizedY.toFixed(2));
             }
@@ -193,6 +223,7 @@
 </head>
 <body>
     <div id="joystick">
+        <div id="deadzone"></div>
         <div id="knob"></div>
     </div>
     <div id="output">X: 0.00, Y: 0.00</div>

@@ -39,27 +39,29 @@ class Motor():
         x = max(-1, min(1, x))
         y = max(-1, min(1, y))
 
-        # Calculate base speed from y component
-        speed = abs(y) * 100
-        turn = abs(x) * 100
-
-        # Calculate motor speed based on whether it's left or right motor
-        motor_speed = speed
-        if x != 0:  # Turning
-            if self.is_left_motor:
-                if x < 0:  # Turning left
-                    motor_speed = -turn
-                elif x > 0:  # Turning right
-                    motor_speed = turn
-            else:  # Right motor
-                if x < 0:  # Turning left
-                    motor_speed = turn
-                elif x > 0:  # Turning right
-                    motor_speed = -turn
-
-        # If moving forward/backward, override turn speed
-        if abs(y) > abs(x):
-            motor_speed = speed if y > 0 else -speed
+        # Calculate base forward/reverse speed from y component
+        base_speed = y * 100
+        
+        # Determine if this is the inside or outside wheel in the turn
+        # Inverted logic: positive X = turn right, so right wheel is inside
+        is_inside_wheel = (x > 0 and not self.is_left_motor) or (x < 0 and self.is_left_motor)
+        turn_amount = abs(x)
+        
+        if abs(y) > 0.1:  # Moving forward/backward with turn
+            if is_inside_wheel:
+                # Inside wheel: gradually reduce speed, only reverse at high turn values
+                if turn_amount > 0.7:  # Threshold for reversing
+                    motor_speed = base_speed * (-1 * (turn_amount - 0.7) / 0.3)  # Gradual reverse
+                else:
+                    motor_speed = base_speed * (1 - turn_amount)  # Gradual slowdown
+            else:
+                # Outside wheel: maintain full power
+                motor_speed = base_speed
+        else:  # Pure rotation (no forward/backward motion)
+            if is_inside_wheel:
+                motor_speed = -100 * turn_amount
+            else:
+                motor_speed = 100 * turn_amount
 
         # Set motor direction and speed
         if motor_speed > 0:
@@ -72,7 +74,6 @@ class Motor():
         # Convert speed to PWM duty cycle
         pwm_duty = int(abs(motor_speed) * 1023 / 100)
         self.ena_pin.duty(pwm_duty)
-
-        self.current_speed = speed  # Store the current speed
-
+        
+        self.current_speed = motor_speed
         return motor_speed, pwm_duty
