@@ -39,8 +39,14 @@ class Motor():
         x = max(-1, min(1, x))
         y = max(-1, min(1, y))
 
-        # Apply exponential curve to steering input while preserving sign
-        x = (abs(x) ** 2) * (1 if x >= 0 else -1)
+        # Apply different curves based on whether we're turning in place or moving
+        turn_smoothing = 0.6  # Reduce this value to make turning more gentle
+        if abs(y) < 0.1:
+            # Turning in place - use gentler curve
+            x = (abs(x) ** 2.5) * (1 if x >= 0 else -1) * turn_smoothing
+        else:
+            # Turning while moving - scale turn based on forward speed
+            x = (abs(x) ** 2) * (1 if x >= 0 else -1) * turn_smoothing * (1 - abs(y) * 0.5)
 
         # Calculate motor speeds with intermediate clamping
         if self.is_left_motor:
