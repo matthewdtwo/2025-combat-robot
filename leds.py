@@ -52,6 +52,3 @@ def set_leds(led: int | list[int], color):
         for l in led:
             np[l] = color  # Fixed indexing to use l instead of led
     np.write()
-
-# Set initial state of WiFi LED to green (AP active but no clients)
-set_leds(WIFI_AP_ACTIVE, GREEN)
