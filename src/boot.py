@@ -1,15 +1,13 @@
 # boot.py -- run on boot-up
 import network
-from machine import Pin, PWM
 from time import sleep
 
 from leds import GREEN, RED, WIFI_AP_ACTIVE, set_leds, wake_animation
+from config import WIRELESS_AP_NAME, WIRELESS_AP_PASS, WEAPON1_PIN, WEAPON1_OFF, WEAPON1_ON
+from servo import Servo
 
-WEAPON_OFF = 98
-
-WEAPON_ON = 75
-
-weapon_servo = PWM(Pin(7), freq=50, duty=WEAPON_OFF)
+weapon_servo = Servo(WEAPON1_PIN, WEAPON1_OFF, WEAPON1_ON)
+weapon_servo.off()
 
 wake_animation()
 
@@ -17,7 +15,7 @@ wake_animation()
 ap = network.WLAN(network.AP_IF)
 ap.active(True)
 
-ap.config(essid='DomoArigato', password='mrroboto')
+ap.config(essid=WIRELESS_AP_NAME, password=WIRELESS_AP_PASS)
 
 # Wait for the AP to be active
 while not ap.active():

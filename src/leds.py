@@ -1,8 +1,9 @@
 from machine import Pin
 from time import sleep
 import neopixel
+from config import LED_STRIP_PIN
 
-led_pin = Pin(9)
+led_pin = Pin(LED_STRIP_PIN)
 
 num_leds = 3
 

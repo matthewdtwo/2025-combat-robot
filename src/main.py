@@ -1,6 +1,9 @@
 import machine
 import socket
 import json
+from config import (LEFT_MOTOR_IN1, LEFT_MOTOR_IN2, LEFT_MOTOR_ENA,
+                   RIGHT_MOTOR_IN1, RIGHT_MOTOR_IN2, RIGHT_MOTOR_ENA,
+                   ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF)
 from time import sleep, ticks_ms, ticks_diff
 from leds import OFF, RED, WEAPON, WIFI_AP_ACTIVE, GREEN, BLUE, set_leds
 
@@ -10,13 +13,11 @@ with open('webpage.html', 'r') as file:
 
 # setup motors
 from motor import Motor
-# esp32c3 pins
-motor_left = Motor(in1=0, in2=1, ena=2, is_left_motor=True)
-motor_right = Motor(in1=21, in2=20, ena=10, is_left_motor=False)
-
+motor_left = Motor(in1=LEFT_MOTOR_IN1, in2=LEFT_MOTOR_IN2, ena=LEFT_MOTOR_ENA, is_left_motor=True)
+motor_right = Motor(in1=RIGHT_MOTOR_IN1, in2=RIGHT_MOTOR_IN2, ena=RIGHT_MOTOR_ENA, is_left_motor=False)
 
 # setup weapon
-led = machine.Pin(8, machine.Pin.OUT)
+led = machine.Pin(ONBOARD_LED_PIN, machine.Pin.OUT)
 LED_ARMED = False
 WEAPON_ACTIVE = False
 
@@ -57,11 +58,11 @@ def check_weapon_status(timer):
     if WEAPON_ACTIVE and LED_ARMED:
         set_leds(WEAPON, BLUE if LED_ARMED else RED)
         print('Weapon Active')
-        weapon_servo.duty(WEAPON_ON)
+        weapon_servo.on()
         led.value(0)
     else:
         set_leds(WEAPON, GREEN if LED_ARMED else RED)
-        weapon_servo.duty(WEAPON_OFF)
+        weapon_servo.off()
         led.value(1)
 
 weapon_timer = machine.Timer(2)
