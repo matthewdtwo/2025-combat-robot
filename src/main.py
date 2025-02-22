@@ -3,7 +3,7 @@ import socket
 import json
 from config import (LEFT_MOTOR_IN1, LEFT_MOTOR_IN2, LEFT_MOTOR_ENA,
                    RIGHT_MOTOR_IN1, RIGHT_MOTOR_IN2, RIGHT_MOTOR_ENA,
-                   ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF)
+                   ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF, REVERSE_STEERING, REVERSE_FORWARD)
 from time import sleep, ticks_ms, ticks_diff
 from leds import OFF, RED, WEAPON, WIFI_AP_ACTIVE, GREEN, BLUE, set_leds
 
@@ -105,6 +105,8 @@ def handle_command(path):
             last_command_time = ticks_ms()
             _, x, y = path.split('/')[-3:]
             x, y = float(x), float(y)
+            x = -x if REVERSE_STEERING else x  # Reverse steering if configured
+            y = -y if REVERSE_FORWARD else y   # Reverse forward/back if configured
             left_speed, _ = motor_left.move(x, -y)
             right_speed, _ = motor_right.move(x, -y)
             return f'L:{left_speed},R:{right_speed}'

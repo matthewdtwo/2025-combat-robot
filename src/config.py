@@ -1,4 +1,3 @@
-
 # setup wifi
 
 WIRELESS_AP_NAME = "ESP-AP"
@@ -9,6 +8,8 @@ WIRELESS_AP_PASS = ""
 LEFT_MOTOR_IN1 = 0
 LEFT_MOTOR_IN2 = 1
 LEFT_MOTOR_ENA = 2
+REVERSE_STEERING = True  # Set to True to reverse steering direction
+REVERSE_FORWARD = True  # Set to True to reverse forward/backward direction
 
 RIGHT_MOTOR_IN1 = 21
 RIGHT_MOTOR_IN2 = 20
