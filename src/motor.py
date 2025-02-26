@@ -13,22 +13,6 @@ class Motor():
         self.is_left_motor = is_left_motor
         self.current_speed = 0.0
 
-    def forward(self, speed):
-        # scale speed between 0 and 1023
-        speed = int(speed * 1023 / 100)
-
-        self.in1_pin.value(1)
-        self.in2_pin.value(0)
-        self.ena_pin.duty(speed)
-    
-    def reverse(self, speed):
-        # scale speed between 0 and 1023
-        speed = int(speed * 1023 / 100)
-
-        self.in1_pin.value(0)
-        self.in2_pin.value(1)
-        self.ena_pin.duty(speed)
-
     def stop(self):
         self.in1_pin.value(0)
         self.in2_pin.value(0)
@@ -46,7 +30,7 @@ class Motor():
             x = (abs(x) ** 2.5) * (1 if x >= 0 else -1) * turn_smoothing
         else:
             # Turning while moving - scale turn based on forward speed
-            x = (abs(x) ** 2) * (1 if x >= 0 else -1) * turn_smoothing * (1 - abs(y) * 0.5)
+            x = (abs(x) ** 1.5) * (1 if x >= 0 else -1) * turn_smoothing * (1 - abs(y) * 0.5)
 
         # Calculate motor speeds with intermediate clamping
         if self.is_left_motor:

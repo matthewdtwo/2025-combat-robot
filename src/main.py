@@ -18,7 +18,7 @@ motor_right = Motor(in1=RIGHT_MOTOR_IN1, in2=RIGHT_MOTOR_IN2, ena=RIGHT_MOTOR_EN
 
 # setup weapon
 led = machine.Pin(ONBOARD_LED_PIN, machine.Pin.OUT)
-LED_ARMED = False
+WEAPON_ARMED = False
 WEAPON_ACTIVE = False
 
 # Constants for watchdog
@@ -41,10 +41,10 @@ watchdog = machine.Timer(0)
 watchdog.init(period=100, mode=machine.Timer.PERIODIC, callback=check_watchdog)
 
 def check_wifi_connection(timer):
-    global LED_ARMED
+    global WEAPON_ARMED
     ap_connected = ap.isconnected()
     set_leds(WIFI_AP_ACTIVE, BLUE if ap_connected else GREEN)
-    LED_ARMED = ap_connected
+    WEAPON_ARMED = ap_connected
 
 
 check_wifi = machine.Timer(1)
@@ -52,17 +52,20 @@ check_wifi.init(period=250, mode=machine.Timer.PERIODIC, callback=check_wifi_con
 
 
 def check_weapon_status(timer):
-    global LED_ARMED
+    global WEAPON_ARMED
     global weapon_servo
+    global weapon_servo2
 
-    if WEAPON_ACTIVE and LED_ARMED:
-        set_leds(WEAPON, BLUE if LED_ARMED else RED)
+    if WEAPON_ACTIVE and WEAPON_ARMED:
+        set_leds(WEAPON, BLUE if WEAPON_ARMED else RED)
         print('Weapon Active')
         weapon_servo.on()
+        weapon_servo2.on()
         led.value(0)
     else:
-        set_leds(WEAPON, GREEN if LED_ARMED else RED)
+        set_leds(WEAPON, GREEN if WEAPON_ARMED else RED)
         weapon_servo.off()
+        weapon_servo2.off()
         led.value(1)
 
 weapon_timer = machine.Timer(2)
