@@ -69,6 +69,86 @@
             text-align: left;
             font-family: monospace;
         }
+        
+        /* Settings button and modal styles */
+        .settings-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+        }
+        
+        .close {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .servo-setting {
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .input-group label {
+            width: 120px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        
+        .input-group input {
+            flex-grow: 1;
+        }
+        
+        .input-group span {
+            width: 50px;
+            text-align: left;
+            margin-left: 10px;
+        }
+        
+        button#saveSettings {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            float: right;
+        }
     </style>
     <script>
         function sendCommand(url) {
@@ -191,6 +271,62 @@
                 console.error('Status error:', err);
             }
         }
+        
+        // Function to load servo settings from server
+        async function loadServoSettings() {
+            try {
+                const response = await fetch('/servo/settings');
+                if (response.ok) {
+                    const settings = await response.json();
+                    document.getElementById('servo1On').value = settings.servo1.on;
+                    document.getElementById('servo1Off').value = settings.servo1.off;
+                    document.getElementById('servo2On').value = settings.servo2.on;
+                    document.getElementById('servo2Off').value = settings.servo2.off;
+                    
+                    // Update display values
+                    document.getElementById('servo1OnValue').textContent = `${settings.servo1.on}°`;
+                    document.getElementById('servo1OffValue').textContent = `${settings.servo1.off}°`;
+                    document.getElementById('servo2OnValue').textContent = `${settings.servo2.on}°`;
+                    document.getElementById('servo2OffValue').textContent = `${settings.servo2.off}°`;
+                }
+            } catch (err) {
+                console.error('Error loading servo settings:', err);
+            }
+        }
+        
+        // Function to save servo settings to server
+        async function saveServoSettings() {
+            const settings = {
+                servo1: {
+                    on: parseInt(document.getElementById('servo1On').value),
+                    off: parseInt(document.getElementById('servo1Off').value)
+                },
+                servo2: {
+                    on: parseInt(document.getElementById('servo2On').value),
+                    off: parseInt(document.getElementById('servo2Off').value)
+                }
+            };
+            
+            try {
+                const response = await fetch('/servo/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (response.ok) {
+                    alert('Settings saved successfully!');
+                    document.getElementById('settingsModal').style.display = 'none';
+                } else {
+                    alert('Failed to save settings: ' + await response.text());
+                }
+            } catch (err) {
+                console.error('Error saving settings:', err);
+                alert('Error saving settings: ' + err.message);
+            }
+        }
 
         window.onload = function() {
             initJoystick();
@@ -214,6 +350,50 @@
             
             // Start status polling
             statusInterval = setInterval(updateStatus, 100);
+            
+            // Settings modal handling
+            const modal = document.getElementById('settingsModal');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const closeBtn = document.querySelector('.close');
+            const saveBtn = document.getElementById('saveSettings');
+            
+            // When the user clicks the settings button, open the modal
+            settingsBtn.onclick = function() {
+                loadServoSettings();
+                modal.style.display = 'block';
+            }
+            
+            // When the user clicks on close (X), close the modal
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            // When the user clicks the save button, save settings
+            saveBtn.onclick = saveServoSettings;
+            
+            // When the user clicks anywhere outside the modal, close it
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            }
+            
+            // Add event listeners for slider inputs to update display values
+            document.getElementById('servo1On').addEventListener('input', function() {
+                document.getElementById('servo1OnValue').textContent = `${this.value}°`;
+            });
+            
+            document.getElementById('servo1Off').addEventListener('input', function() {
+                document.getElementById('servo1OffValue').textContent = `${this.value}°`;
+            });
+            
+            document.getElementById('servo2On').addEventListener('input', function() {
+                document.getElementById('servo2OnValue').textContent = `${this.value}°`;
+            });
+            
+            document.getElementById('servo2Off').addEventListener('input', function() {
+                document.getElementById('servo2OffValue').textContent = `${this.value}°`;
+            });
         };
 
         window.onunload = function() {
@@ -222,6 +402,8 @@
     </script>
 </head>
 <body>
+    <button id="settingsBtn" class="settings-btn">⚙️</button>
+    
     <div id="joystick">
         <div id="deadzone"></div>
         <div id="knob"></div>
@@ -234,6 +416,44 @@
         LED: <span id="led-status">OFF</span><br>
         Left Motor: <span id="left-motor">0.00</span><br>
         Right Motor: <span id="right-motor">0.00</span>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Servo Settings</h2>
+            
+            <div class="servo-setting">
+                <h3>Servo 1</h3>
+                <div class="input-group">
+                    <label for="servo1On">On Position:</label>
+                    <input type="range" id="servo1On" min="0" max="180" value="0">
+                    <span id="servo1OnValue">0°</span>
+                </div>
+                <div class="input-group">
+                    <label for="servo1Off">Off Position:</label>
+                    <input type="range" id="servo1Off" min="0" max="180" value="90">
+                    <span id="servo1OffValue">90°</span>
+                </div>
+            </div>
+            
+            <div class="servo-setting">
+                <h3>Servo 2</h3>
+                <div class="input-group">
+                    <label for="servo2On">On Position:</label>
+                    <input type="range" id="servo2On" min="0" max="180" value="0">
+                    <span id="servo2OnValue">0°</span>
+                </div>
+                <div class="input-group">
+                    <label for="servo2Off">Off Position:</label>
+                    <input type="range" id="servo2Off" min="0" max="180" value="90">
+                    <span id="servo2OffValue">90°</span>
+                </div>
+            </div>
+            
+            <button id="saveSettings">Save</button>
+        </div>
     </div>
 </body>
 </html>

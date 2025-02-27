@@ -6,6 +6,7 @@ from config import (LEFT_MOTOR_IN1, LEFT_MOTOR_IN2, LEFT_MOTOR_ENA,
                    ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF, REVERSE_STEERING, REVERSE_FORWARD)
 from time import sleep, ticks_ms, ticks_diff
 from leds import OFF, RED, WEAPON, WIFI_AP_ACTIVE, GREEN, BLUE, set_leds
+from servo_handler import load_settings, save_settings
 
 # Load HTML template from file
 with open('webpage.html', 'r') as file:
@@ -88,8 +89,8 @@ def get_status():
         }
     })
 
-def handle_command(path):
-    global last_command_time, WEAPON_ACTIVE  # Add WEAPON_ACTIVE as global
+def handle_command(path, request_type='GET', body=None):
+    global last_command_time, WEAPON_ACTIVE
     try:
         if path == '/status':
             return get_status()
@@ -113,8 +114,32 @@ def handle_command(path):
             left_speed, _ = motor_left.move(x, -y)
             right_speed, _ = motor_right.move(x, -y)
             return f'L:{left_speed},R:{right_speed}'
-    except:
-        return 'ERROR'
+            
+        elif path == '/servo/settings':
+            if request_type == 'GET':
+                # Return current servo settings
+                return json.dumps(load_settings())
+            elif request_type == 'POST' and body:
+                try:
+                    # Parse received JSON
+                    settings = json.loads(body)
+                    
+                    # Validate settings
+                    required_keys = ['servo1', 'servo2']
+                    for key in required_keys:
+                        if key not in settings:
+                            return json.dumps({"error": f"Missing required key: {key}"})
+                        if 'on' not in settings[key] or 'off' not in settings[key]:
+                            return json.dumps({"error": f"Missing on/off values for {key}"})
+                    
+                    # Save settings
+                    save_settings(settings)
+                    return json.dumps({"success": "Settings saved successfully"})
+                except Exception as e:
+                    return json.dumps({"error": f"Error processing settings: {str(e)}"})
+    except Exception as e:
+        print("Command error:", e)
+        return json.dumps({"error": str(e)})
 
 # Create socket server
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
@@ -129,15 +154,46 @@ while True:
     try:
         cl, addr = s.accept()
         request = cl.recv(1024).decode()
-
-        if 'GET / ' in request:
-            send_html(cl, html)
-        elif 'GET /status' in request or 'GET /button/' in request or 'GET /joystick/' in request:
-            path = request.split(' ')[1]
-            response = handle_command(path)
-            cl.send('HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n')
-            cl.send(response)
+        request_lines = request.split('\r\n')
+        request_line = request_lines[0] if request_lines else ""
         
+        # Parse request type and path
+        parts = request_line.split(' ')
+        if len(parts) >= 2:
+            request_type = parts[0]  # GET or POST
+            path = parts[1]          # URL path
+            
+            # Handle GET requests
+            if request_type == 'GET':
+                if path == '/':
+                    send_html(cl, html)
+                else:
+                    response = handle_command(path, request_type)
+                    cl.send('HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n')
+                    cl.send(response)
+            
+            # Handle POST requests
+            elif request_type == 'POST':
+                # Find Content-Length header to determine request body size
+                content_length = 0
+                for line in request_lines:
+                    if line.lower().startswith('content-length:'):
+                        content_length = int(line.split(':')[1].strip())
+                        break
+                
+                # Get request body
+                body = None
+                if content_length > 0:
+                    # Find the empty line that separates headers from body
+                    empty_line_pos = request.find('\r\n\r\n')
+                    if empty_line_pos != -1:
+                        body_start = empty_line_pos + 4
+                        body = request[body_start:body_start+content_length]
+                
+                response = handle_command(path, request_type, body)
+                cl.send('HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n')
+                cl.send(response)
+            
         cl.close()
     except Exception as e:
         print('Error:', e)
