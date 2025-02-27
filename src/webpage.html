@@ -1,36 +1,52 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Robot Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial; text-align: center; margin-top: 50px; display: flex; justify-content: space-around; align-items: center; height: 100vh; }
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100vh;
+        }
+
         .button {
             background-color: #4CAF50;
             border: none;
             color: white;
-            padding: 72px; /* Changed to make the button square */
+            padding: 72px;
+            /* Changed to make the button square */
             text-align: center;
             font-size: 16px;
             margin: 10px;
             cursor: pointer;
             border-radius: 8px;
         }
+
         .button.disabled {
             background-color: #cccccc;
             cursor: not-allowed;
             pointer-events: none;
         }
+
         #joystick {
-            width: 400px;  /* Increased size */
+            width: 400px;
+            /* Increased size */
             height: 400px;
             background-color: #ddd;
             border-radius: 50%;
             position: relative;
             touch-action: none;
         }
+
         #knob {
-            width: 120px;  /* Increased proportionally */
+            width: 120px;
+            /* Increased proportionally */
             height: 120px;
             background-color: #4CAF50;
             border-radius: 50%;
@@ -39,6 +55,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+
         /* Add deadzone indicator */
         #deadzone {
             width: 80px;
@@ -51,6 +68,7 @@
             transform: translate(-50%, -50%);
             pointer-events: none;
         }
+
         #status {
             position: fixed;
             top: 10px;
@@ -58,6 +76,7 @@
             padding: 5px;
             border-radius: 5px;
         }
+
         #status-display {
             position: fixed;
             top: 10px;
@@ -69,19 +88,74 @@
             text-align: left;
             font-family: monospace;
         }
-        
+
         /* Settings button and modal styles */
         .settings-btn {
             position: fixed;
             top: 10px;
             right: 10px;
-            background: none;
+            background-color: #555;
+            color: white;
             border: none;
-            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 18px;
             cursor: pointer;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        
+
+        /* Gear icon using CSS */
+        .gear-icon {
+            position: relative;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+        }
+
+        .gear-icon:before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 0;
+            width: 2px;
+            height: 20px;
+            background-color: #555;
+        }
+
+        .gear-icon:after {
+            content: '';
+            position: absolute;
+            top: 9px;
+            left: 0;
+            height: 2px;
+            width: 20px;
+            background-color: #555;
+        }
+
+        .gear-diagonal1,
+        .gear-diagonal2 {
+            position: absolute;
+            width: 2px;
+            height: 16px;
+            background-color: #555;
+            top: 2px;
+            left: 9px;
+        }
+
+        .gear-diagonal1 {
+            transform: rotate(45deg);
+        }
+
+        .gear-diagonal2 {
+            transform: rotate(-45deg);
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -89,10 +163,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            background-color: rgba(0, 0, 0, 0.7);
             z-index: 1000;
         }
-        
+
         .modal-content {
             position: relative;
             background-color: #fefefe;
@@ -102,7 +176,7 @@
             width: 80%;
             max-width: 500px;
         }
-        
+
         .close {
             position: absolute;
             right: 10px;
@@ -110,33 +184,33 @@
             font-size: 24px;
             cursor: pointer;
         }
-        
+
         .servo-setting {
             margin-bottom: 20px;
         }
-        
+
         .input-group {
             display: flex;
             align-items: center;
             margin: 10px 0;
         }
-        
+
         .input-group label {
             width: 120px;
             text-align: right;
             margin-right: 10px;
         }
-        
+
         .input-group input {
             flex-grow: 1;
         }
-        
+
         .input-group span {
             width: 50px;
             text-align: left;
             margin-left: 10px;
         }
-        
+
         button#saveSettings {
             background-color: #4CAF50;
             border: none;
@@ -148,6 +222,64 @@
             cursor: pointer;
             border-radius: 4px;
             float: right;
+        }
+
+        /* Toggle switch styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .toggle-label {
+            flex-grow: 1;
+            text-align: left;
         }
     </style>
     <script>
@@ -223,7 +355,7 @@
                 // Calculate normalized values with deadzone
                 let normalizedX = (knobX - centerX) / centerX;
                 let normalizedY = (knobY - centerY) / centerY;
-                
+
                 // Apply deadzone
                 const magnitude = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
                 if (magnitude < DEADZONE) {
@@ -257,21 +389,21 @@
             try {
                 const response = await fetch('/status');
                 const status = await response.json();
-                
+
                 // Update LED status
-                document.getElementById('led-status').textContent = 
+                document.getElementById('led-status').textContent =
                     status.led ? 'ON' : 'OFF';
-                
+
                 // Update motor speeds
-                document.getElementById('left-motor').textContent = 
+                document.getElementById('left-motor').textContent =
                     status.motors.left.toFixed(2);
-                document.getElementById('right-motor').textContent = 
+                document.getElementById('right-motor').textContent =
                     status.motors.right.toFixed(2);
             } catch (err) {
                 console.error('Status error:', err);
             }
         }
-        
+
         // Function to load servo settings from server
         async function loadServoSettings() {
             try {
@@ -280,20 +412,18 @@
                     const settings = await response.json();
                     document.getElementById('servo1On').value = settings.servo1.on;
                     document.getElementById('servo1Off').value = settings.servo1.off;
-                    document.getElementById('servo2On').value = settings.servo2.on;
-                    document.getElementById('servo2Off').value = settings.servo2.off;
+                    document.getElementById('servo1OnValue').textContent = `${settings.servo1.on} deg`;
+                    document.getElementById('servo1OffValue').textContent = `${settings.servo1.off} deg`;
                     
-                    // Update display values
-                    document.getElementById('servo1OnValue').textContent = `${settings.servo1.on}°`;
-                    document.getElementById('servo1OffValue').textContent = `${settings.servo1.off}°`;
-                    document.getElementById('servo2OnValue').textContent = `${settings.servo2.on}°`;
-                    document.getElementById('servo2OffValue').textContent = `${settings.servo2.off}°`;
+                    // Set toggle switches
+                    document.getElementById('reverseSteeringToggle').checked = settings.reverse_steering || false;
+                    document.getElementById('reverseMotorsToggle').checked = settings.reverse_motors || false;
                 }
             } catch (err) {
-                console.error('Error loading servo settings:', err);
+                console.error('Error loading settings:', err);
             }
         }
-        
+
         // Function to save servo settings to server
         async function saveServoSettings() {
             const settings = {
@@ -301,12 +431,10 @@
                     on: parseInt(document.getElementById('servo1On').value),
                     off: parseInt(document.getElementById('servo1Off').value)
                 },
-                servo2: {
-                    on: parseInt(document.getElementById('servo2On').value),
-                    off: parseInt(document.getElementById('servo2Off').value)
-                }
+                reverse_steering: document.getElementById('reverseSteeringToggle').checked,
+                reverse_motors: document.getElementById('reverseMotorsToggle').checked
             };
-            
+
             try {
                 const response = await fetch('/servo/settings', {
                     method: 'POST',
@@ -315,7 +443,7 @@
                     },
                     body: JSON.stringify(settings)
                 });
-                
+
                 if (response.ok) {
                     alert('Settings saved successfully!');
                     document.getElementById('settingsModal').style.display = 'none';
@@ -328,132 +456,136 @@
             }
         }
 
-        window.onload = function() {
+        window.onload = function () {
             initJoystick();
             const button = document.querySelector('.button');
-            button.addEventListener('mousedown', function(event) {
+            button.addEventListener('mousedown', function (event) {
                 event.preventDefault();
                 buttonPress();
             });
-            button.addEventListener('mouseup', function(event) {
+            button.addEventListener('mouseup', function (event) {
                 event.preventDefault();
                 buttonRelease();
             });
-            button.addEventListener('touchstart', function(event) {
+            button.addEventListener('touchstart', function (event) {
                 event.preventDefault();
                 buttonPress();
             });
-            button.addEventListener('touchend', function(event) {
+            button.addEventListener('touchend', function (event) {
                 event.preventDefault();
                 buttonRelease();
             });
-            
+
             // Start status polling
             statusInterval = setInterval(updateStatus, 100);
-            
+
             // Settings modal handling
             const modal = document.getElementById('settingsModal');
             const settingsBtn = document.getElementById('settingsBtn');
             const closeBtn = document.querySelector('.close');
             const saveBtn = document.getElementById('saveSettings');
-            
+
             // When the user clicks the settings button, open the modal
-            settingsBtn.onclick = function() {
+            settingsBtn.onclick = function () {
                 loadServoSettings();
                 modal.style.display = 'block';
             }
-            
+
             // When the user clicks on close (X), close the modal
-            closeBtn.onclick = function() {
+            closeBtn.onclick = function () {
                 modal.style.display = 'none';
             }
-            
+
             // When the user clicks the save button, save settings
             saveBtn.onclick = saveServoSettings;
-            
+
             // When the user clicks anywhere outside the modal, close it
-            window.onclick = function(event) {
+            window.onclick = function (event) {
                 if (event.target === modal) {
                     modal.style.display = 'none';
                 }
             }
-            
+
             // Add event listeners for slider inputs to update display values
-            document.getElementById('servo1On').addEventListener('input', function() {
-                document.getElementById('servo1OnValue').textContent = `${this.value}°`;
+            document.getElementById('servo1On').addEventListener('input', function () {
+                document.getElementById('servo1OnValue').textContent = `${this.value} deg`;
             });
-            
-            document.getElementById('servo1Off').addEventListener('input', function() {
-                document.getElementById('servo1OffValue').textContent = `${this.value}°`;
-            });
-            
-            document.getElementById('servo2On').addEventListener('input', function() {
-                document.getElementById('servo2OnValue').textContent = `${this.value}°`;
-            });
-            
-            document.getElementById('servo2Off').addEventListener('input', function() {
-                document.getElementById('servo2OffValue').textContent = `${this.value}°`;
+
+            document.getElementById('servo1Off').addEventListener('input', function () {
+                document.getElementById('servo1OffValue').textContent = `${this.value} deg`;
             });
         };
 
-        window.onunload = function() {
+        window.onunload = function () {
             clearInterval(statusInterval);
         };
     </script>
 </head>
+
 <body>
-    <button id="settingsBtn" class="settings-btn">⚙️</button>
-    
+    <button id="settingsBtn" class="settings-btn">
+        <div class="gear-icon">
+            <div class="gear-diagonal1"></div>
+            <div class="gear-diagonal2"></div>
+        </div>
+    </button>
+
     <div id="joystick">
         <div id="deadzone"></div>
         <div id="knob"></div>
     </div>
     <div id="output">X: 0.00, Y: 0.00</div>
     <div>
-        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()" ontouchend="buttonRelease()"></button>
+        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()"
+            ontouchend="buttonRelease()"></button>
     </div>
     <div id="status-display">
         LED: <span id="led-status">OFF</span><br>
         Left Motor: <span id="left-motor">0.00</span><br>
         Right Motor: <span id="right-motor">0.00</span>
     </div>
-    
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Servo Settings</h2>
-            
+            <h2>Robot Settings</h2>
+
             <div class="servo-setting">
-                <h3>Servo 1</h3>
+                <h3>Weapon Servo</h3>
                 <div class="input-group">
-                    <label for="servo1On">On Position:</label>
+                    <label for="servo1On">Active Position:</label>
                     <input type="range" id="servo1On" min="0" max="180" value="0">
-                    <span id="servo1OnValue">0°</span>
+                    <span id="servo1OnValue">0 deg</span>
                 </div>
                 <div class="input-group">
-                    <label for="servo1Off">Off Position:</label>
+                    <label for="servo1Off">Rest Position:</label>
                     <input type="range" id="servo1Off" min="0" max="180" value="90">
-                    <span id="servo1OffValue">90°</span>
+                    <span id="servo1OffValue">90 deg</span>
                 </div>
             </div>
-            
-            <div class="servo-setting">
-                <h3>Servo 2</h3>
-                <div class="input-group">
-                    <label for="servo2On">On Position:</label>
-                    <input type="range" id="servo2On" min="0" max="180" value="0">
-                    <span id="servo2OnValue">0°</span>
+
+            <div class="toggles-section">
+                <h3>Control Settings</h3>
+                <div class="toggle-group">
+                    <span class="toggle-label">Reverse Steering</span>
+                    <label class="switch">
+                        <input type="checkbox" id="reverseSteeringToggle">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <div class="input-group">
-                    <label for="servo2Off">Off Position:</label>
-                    <input type="range" id="servo2Off" min="0" max="180" value="90">
-                    <span id="servo2OffValue">90°</span>
+                <div class="toggle-group">
+                    <span class="toggle-label">Reverse Motors</span>
+                    <label class="switch">
+                        <input type="checkbox" id="reverseMotorsToggle">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
-            
+
             <button id="saveSettings">Save</button>
         </div>
     </div>
 </body>
+
 </html>

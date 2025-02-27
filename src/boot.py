@@ -3,14 +3,11 @@ import network
 from time import sleep
 
 from leds import GREEN, RED, WIFI_AP_ACTIVE, set_leds, wake_animation
-from config import WEAPON2_OFF, WEAPON2_ON, WEAPON2_PIN, WIRELESS_AP_NAME, WIRELESS_AP_PASS, WEAPON1_PIN, WEAPON1_OFF, WEAPON1_ON
+from config import WIRELESS_AP_NAME, WIRELESS_AP_PASS, WEAPON1_PIN, WEAPON1_OFF, WEAPON1_ON
 from servo import Servo
 
 weapon_servo = Servo(WEAPON1_PIN, WEAPON1_OFF, WEAPON1_ON)
 weapon_servo.off()
-
-weapon_servo2 = Servo(WEAPON2_PIN, WEAPON2_OFF, WEAPON2_ON)
-weapon_servo2.off()
 
 
 wake_animation()

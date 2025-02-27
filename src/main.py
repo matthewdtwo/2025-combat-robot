@@ -3,10 +3,15 @@ import socket
 import json
 from config import (LEFT_MOTOR_IN1, LEFT_MOTOR_IN2, LEFT_MOTOR_ENA,
                    RIGHT_MOTOR_IN1, RIGHT_MOTOR_IN2, RIGHT_MOTOR_ENA,
-                   ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF, REVERSE_STEERING, REVERSE_FORWARD)
+                   ONBOARD_LED_PIN, WEAPON1_ON, WEAPON1_OFF, WEAPON1_PIN)
 from time import sleep, ticks_ms, ticks_diff
 from leds import OFF, RED, WEAPON, WIFI_AP_ACTIVE, GREEN, BLUE, set_leds
-from servo_handler import load_settings, save_settings
+from settings_handler import load_settings, save_settings
+
+# Load settings
+settings = load_settings()
+REVERSE_STEERING = settings.get("reverse_steering", False)
+REVERSE_FORWARD = settings.get("reverse_motors", False)
 
 # Load HTML template from file
 with open('webpage.html', 'r') as file:
@@ -19,6 +24,8 @@ motor_right = Motor(in1=RIGHT_MOTOR_IN1, in2=RIGHT_MOTOR_IN2, ena=RIGHT_MOTOR_EN
 
 # setup weapon
 led = machine.Pin(ONBOARD_LED_PIN, machine.Pin.OUT)
+weapon_servo = machine.PWM(machine.Pin(WEAPON1_PIN))
+weapon_servo.freq(50)  # 50 Hz for servo control
 WEAPON_ARMED = False
 WEAPON_ACTIVE = False
 
@@ -26,11 +33,28 @@ WEAPON_ACTIVE = False
 WATCHDOG_TIMEOUT = 500  # 500ms timeout
 last_command_time = ticks_ms()
 
+def update_servo_positions():
+    """Update servo positions based on settings"""
+    settings = load_settings()
+    servo1 = settings.get("servo1", {})
+    weapon_servo.duty_u16(int(servo1.get("off", WEAPON1_OFF) * 65535 / 180))
+
+# Apply initial servo positions
+update_servo_positions()
+
+# Update motor control parameters
+def update_motor_settings():
+    global REVERSE_STEERING, REVERSE_FORWARD
+    settings = load_settings()
+    REVERSE_STEERING = settings.get("reverse_steering", False)
+    REVERSE_FORWARD = settings.get("reverse_motors", False)
+
+# Apply initial motor settings
+update_motor_settings()
 
 def stop_motors():
     motor_left.stop()
     motor_right.stop()
-
 
 def check_watchdog(timer):
     global last_command_time
@@ -47,32 +71,29 @@ def check_wifi_connection(timer):
     set_leds(WIFI_AP_ACTIVE, BLUE if ap_connected else GREEN)
     WEAPON_ARMED = ap_connected
 
-
 check_wifi = machine.Timer(1)
 check_wifi.init(period=250, mode=machine.Timer.PERIODIC, callback=check_wifi_connection)
-
 
 def check_weapon_status(timer):
     global WEAPON_ARMED
     global weapon_servo
-    global weapon_servo2
 
     if WEAPON_ACTIVE and WEAPON_ARMED:
         set_leds(WEAPON, BLUE if WEAPON_ARMED else RED)
         print('Weapon Active')
-        weapon_servo.on()
-        weapon_servo2.on()
+        settings = load_settings()
+        servo1 = settings.get("servo1", {})
+        weapon_servo.duty_u16(int(servo1.get("on", WEAPON1_ON) * 65535 / 180))
         led.value(0)
     else:
         set_leds(WEAPON, GREEN if WEAPON_ARMED else RED)
-        weapon_servo.off()
-        weapon_servo2.off()
+        settings = load_settings()
+        servo1 = settings.get("servo1", {})
+        weapon_servo.duty_u16(int(servo1.get("off", WEAPON1_OFF) * 65535 / 180))
         led.value(1)
 
 weapon_timer = machine.Timer(2)
 weapon_timer.init(period=200, mode=machine.Timer.PERIODIC, callback=check_weapon_status)
-
-
 
 def send_html(client, html):
     client.send('HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n')
@@ -81,7 +102,6 @@ def send_html(client, html):
 
 def get_status():
     return json.dumps({
-        # 'led': not bool(led.value()),  # Invert since LED is active low
         'led': not led.value(),
         'motors': {
             'left': motor_left.current_speed,
@@ -90,7 +110,7 @@ def get_status():
     })
 
 def handle_command(path, request_type='GET', body=None):
-    global last_command_time, WEAPON_ACTIVE
+    global last_command_time, WEAPON_ACTIVE, REVERSE_STEERING, REVERSE_FORWARD
     try:
         if path == '/status':
             return get_status()
@@ -98,10 +118,8 @@ def handle_command(path, request_type='GET', body=None):
             last_command_time = ticks_ms()
             state = path.split('/')[-1]
             if state == 'press':
-                # on
                 WEAPON_ACTIVE = True
             else:
-                # off
                 WEAPON_ACTIVE = False
             return 'OK'
         
@@ -109,31 +127,31 @@ def handle_command(path, request_type='GET', body=None):
             last_command_time = ticks_ms()
             _, x, y = path.split('/')[-3:]
             x, y = float(x), float(y)
-            x = -x if REVERSE_STEERING else x  # Reverse steering if configured
-            y = -y if REVERSE_FORWARD else y   # Reverse forward/back if configured
+            x = -x if REVERSE_STEERING else x
+            y = -y if REVERSE_FORWARD else y
             left_speed, _ = motor_left.move(x, -y)
             right_speed, _ = motor_right.move(x, -y)
             return f'L:{left_speed},R:{right_speed}'
             
         elif path == '/servo/settings':
             if request_type == 'GET':
-                # Return current servo settings
                 return json.dumps(load_settings())
             elif request_type == 'POST' and body:
                 try:
-                    # Parse received JSON
                     settings = json.loads(body)
                     
-                    # Validate settings
-                    required_keys = ['servo1', 'servo2']
-                    for key in required_keys:
-                        if key not in settings:
-                            return json.dumps({"error": f"Missing required key: {key}"})
-                        if 'on' not in settings[key] or 'off' not in settings[key]:
-                            return json.dumps({"error": f"Missing on/off values for {key}"})
+                    if 'servo1' not in settings:
+                        return json.dumps({"error": "Missing required key: servo1"})
+                    if 'on' not in settings['servo1'] or 'off' not in settings['servo1']:
+                        return json.dumps({"error": "Missing on/off values for servo1"})
                     
-                    # Save settings
                     save_settings(settings)
+                    
+                    REVERSE_STEERING = settings.get("reverse_steering", False)
+                    REVERSE_FORWARD = settings.get("reverse_motors", False)
+                    
+                    update_servo_positions()
+                    
                     return json.dumps({"success": "Settings saved successfully"})
                 except Exception as e:
                     return json.dumps({"error": f"Error processing settings: {str(e)}"})
@@ -157,13 +175,11 @@ while True:
         request_lines = request.split('\r\n')
         request_line = request_lines[0] if request_lines else ""
         
-        # Parse request type and path
         parts = request_line.split(' ')
         if len(parts) >= 2:
-            request_type = parts[0]  # GET or POST
-            path = parts[1]          # URL path
+            request_type = parts[0]
+            path = parts[1]
             
-            # Handle GET requests
             if request_type == 'GET':
                 if path == '/':
                     send_html(cl, html)
@@ -172,19 +188,15 @@ while True:
                     cl.send('HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n')
                     cl.send(response)
             
-            # Handle POST requests
             elif request_type == 'POST':
-                # Find Content-Length header to determine request body size
                 content_length = 0
                 for line in request_lines:
                     if line.lower().startswith('content-length:'):
                         content_length = int(line.split(':')[1].strip())
                         break
                 
-                # Get request body
                 body = None
                 if content_length > 0:
-                    # Find the empty line that separates headers from body
                     empty_line_pos = request.find('\r\n\r\n')
                     if empty_line_pos != -1:
                         body_start = empty_line_pos + 4
