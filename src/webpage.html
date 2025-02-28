@@ -3,27 +3,60 @@
 
 <head>
     <title>Robot Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: Arial;
             text-align: center;
-            margin-top: 50px;
             display: flex;
-            justify-content: space-around;
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .control-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            padding: 10px 20px;
+            flex-wrap: nowrap;
+            margin: 0 auto;
+        }
+
+        .joystick-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: auto;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: auto;
         }
 
         .button {
             background-color: #4CAF50;
             border: none;
             color: white;
-            padding: 72px;
-            /* Changed to make the button square */
+            width: 120px;
+            height: 120px;
             text-align: center;
             font-size: 16px;
-            margin: 10px;
+            margin: 15px;
             cursor: pointer;
             border-radius: 8px;
         }
@@ -35,9 +68,10 @@
         }
 
         #joystick {
-            width: 400px;
-            /* Increased size */
-            height: 400px;
+            width: 80vw;
+            max-width: 400px;
+            height: 80vw;
+            max-height: 400px;
             background-color: #ddd;
             border-radius: 50%;
             position: relative;
@@ -45,9 +79,8 @@
         }
 
         #knob {
-            width: 120px;
-            /* Increased proportionally */
-            height: 120px;
+            width: 30%;
+            height: 30%;
             background-color: #4CAF50;
             border-radius: 50%;
             position: absolute;
@@ -58,8 +91,8 @@
 
         /* Add deadzone indicator */
         #deadzone {
-            width: 80px;
-            height: 80px;
+            width: 20%;
+            height: 20%;
             border: 2px dashed #999;
             border-radius: 50%;
             position: absolute;
@@ -77,6 +110,12 @@
             border-radius: 5px;
         }
 
+        #output {
+            margin: 10px 0;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
         #status-display {
             position: fixed;
             top: 10px;
@@ -87,6 +126,8 @@
             border-radius: 5px;
             text-align: left;
             font-family: monospace;
+            font-size: 14px;
+            z-index: 50;
         }
 
         /* Settings button and modal styles */
@@ -109,7 +150,6 @@
             justify-content: center;
         }
 
-        /* Gear icon using CSS */
         .gear-icon {
             position: relative;
             width: 20px;
@@ -170,11 +210,13 @@
         .modal-content {
             position: relative;
             background-color: #fefefe;
-            margin: 15% auto;
+            margin: 10% auto;
             padding: 20px;
             border-radius: 8px;
-            width: 80%;
+            width: 90%;
             max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .close {
@@ -193,22 +235,26 @@
             display: flex;
             align-items: center;
             margin: 10px 0;
+            flex-wrap: wrap;
         }
 
         .input-group label {
             width: 120px;
             text-align: right;
             margin-right: 10px;
+            font-size: 14px;
         }
 
         .input-group input {
             flex-grow: 1;
+            min-width: 150px;
         }
 
         .input-group span {
             width: 50px;
             text-align: left;
-            margin-left: 10px;
+            margin-left: 5px;
+            font-size: 14px;
         }
 
         button#saveSettings {
@@ -281,6 +327,89 @@
             flex-grow: 1;
             text-align: left;
         }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .control-container {
+                padding: 5px 10px;
+                justify-content: space-around;
+            }
+            
+            #status-display {
+                font-size: 12px;
+                padding: 5px;
+            }
+
+            .button {
+                width: 100px;
+                height: 100px;
+                margin: 10px;
+            }
+
+            .button-container {
+                margin-left: 10px;
+            }
+
+            .input-group label {
+                width: 100%;
+                text-align: left;
+                margin-bottom: 5px;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .input-group input {
+                width: 100%;
+            }
+            
+            .input-group span {
+                align-self: flex-end;
+                margin-top: 5px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .control-container {
+                flex-direction: column;
+                justify-content: center;
+            }
+            
+            .joystick-container {
+                margin-right: 0;
+            }
+            
+            .button-container {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            
+            .button {
+                width: 80px;
+                height: 80px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .button {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            #joystick {
+                width: 60vw;
+                height: 60vw;
+            }
+            
+            .button {
+                width: 80px;
+                height: 80px;
+            }
+        }
     </style>
     <script>
         function sendCommand(url) {
@@ -319,7 +448,7 @@
             joystick.addEventListener('touchstart', startDrag);
 
             document.addEventListener('mousemove', drag);
-            document.addEventListener('touchmove', drag);
+            document.addEventListener('touchmove', drag, { passive: false });
 
             document.addEventListener('mouseup', endDrag);
             document.addEventListener('touchend', endDrag);
@@ -530,19 +659,24 @@
         </div>
     </button>
 
-    <div id="joystick">
-        <div id="deadzone"></div>
-        <div id="knob"></div>
-    </div>
-    <div id="output">X: 0.00, Y: 0.00</div>
-    <div>
-        <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()"
-            ontouchend="buttonRelease()"></button>
-    </div>
     <div id="status-display">
         LED: <span id="led-status">OFF</span><br>
         Left Motor: <span id="left-motor">0.00</span><br>
         Right Motor: <span id="right-motor">0.00</span>
+    </div>
+
+    <div class="control-container">
+        <div class="joystick-container">
+            <div id="joystick">
+                <div id="deadzone"></div>
+                <div id="knob"></div>
+            </div>
+            <div id="output">X: 0.00, Y: 0.00</div>
+        </div>
+        <div class="button-container">
+            <button class="button" onmousedown="buttonPress()" onmouseup="buttonRelease()" ontouchstart="buttonPress()"
+                ontouchend="buttonRelease()"></button>
+        </div>
     </div>
 
     <!-- Settings Modal -->
