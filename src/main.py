@@ -13,6 +13,12 @@ settings = load_settings()
 REVERSE_STEERING = settings.get("reverse_steering", False)
 REVERSE_FORWARD = settings.get("reverse_motors", False)
 
+# Cache servo positions to avoid frequent file access
+servo_positions = {
+    "on": settings.get("servo1", {}).get("on", WEAPON1_ON),
+    "off": settings.get("servo1", {}).get("off", WEAPON1_OFF)
+}
+
 # Load HTML template from file
 with open('webpage.html', 'r') as file:
     html = file.read()
@@ -24,8 +30,7 @@ motor_right = Motor(in1=RIGHT_MOTOR_IN1, in2=RIGHT_MOTOR_IN2, ena=RIGHT_MOTOR_EN
 
 # setup weapon
 led = machine.Pin(ONBOARD_LED_PIN, machine.Pin.OUT)
-weapon_servo = machine.PWM(machine.Pin(WEAPON1_PIN))
-weapon_servo.freq(50)  # 50 Hz for servo control
+weapon_servo = machine.PWM(machine.Pin(WEAPON1_PIN), freq=50, duty=0)
 WEAPON_ARMED = False
 WEAPON_ACTIVE = False
 
@@ -33,14 +38,15 @@ WEAPON_ACTIVE = False
 WATCHDOG_TIMEOUT = 500  # 500ms timeout
 last_command_time = ticks_ms()
 
-def update_servo_positions():
-    """Update servo positions based on settings"""
-    settings = load_settings()
-    servo1 = settings.get("servo1", {})
-    weapon_servo.duty_u16(int(servo1.get("off", WEAPON1_OFF) * 65535 / 180))
+# Apply initial servo position
+def update_servo_position(position_type="off"):
+    """Update servo position directly using cached values"""
+    position = servo_positions.get(position_type, servo_positions["off"])
+    # Changed scaling from 1023 to 100 for duty cycle
+    weapon_servo.duty(int(position * 100 / 180))
 
-# Apply initial servo positions
-update_servo_positions()
+# Set initial servo position
+update_servo_position("off")
 
 # Update motor control parameters
 def update_motor_settings():
@@ -81,19 +87,17 @@ def check_weapon_status(timer):
     if WEAPON_ACTIVE and WEAPON_ARMED:
         set_leds(WEAPON, BLUE if WEAPON_ARMED else RED)
         print('Weapon Active')
-        settings = load_settings()
-        servo1 = settings.get("servo1", {})
-        weapon_servo.duty_u16(int(servo1.get("on", WEAPON1_ON) * 65535 / 180))
+        # Use cached servo positions instead of loading from file
+        update_servo_position("on")
         led.value(0)
     else:
         set_leds(WEAPON, GREEN if WEAPON_ARMED else RED)
-        settings = load_settings()
-        servo1 = settings.get("servo1", {})
-        weapon_servo.duty_u16(int(servo1.get("off", WEAPON1_OFF) * 65535 / 180))
+        # Use cached servo positions instead of loading from file
+        update_servo_position("off")
         led.value(1)
 
 weapon_timer = machine.Timer(2)
-weapon_timer.init(period=200, mode=machine.Timer.PERIODIC, callback=check_weapon_status)
+weapon_timer.init(period=50, mode=machine.Timer.PERIODIC, callback=check_weapon_status)
 
 def send_html(client, html):
     client.send('HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n')
@@ -110,7 +114,7 @@ def get_status():
     })
 
 def handle_command(path, request_type='GET', body=None):
-    global last_command_time, WEAPON_ACTIVE, REVERSE_STEERING, REVERSE_FORWARD
+    global last_command_time, WEAPON_ACTIVE, REVERSE_STEERING, REVERSE_FORWARD, servo_positions
     try:
         if path == '/status':
             return get_status()
@@ -147,11 +151,13 @@ def handle_command(path, request_type='GET', body=None):
                     
                     save_settings(settings)
                     
+                    # Update cached servo positions
+                    servo_positions["on"] = settings["servo1"]["on"]
+                    servo_positions["off"] = settings["servo1"]["off"]
+                    
                     REVERSE_STEERING = settings.get("reverse_steering", False)
                     REVERSE_FORWARD = settings.get("reverse_motors", False)
-                    
-                    update_servo_positions()
-                    
+                                        
                     return json.dumps({"success": "Settings saved successfully"})
                 except Exception as e:
                     return json.dumps({"error": f"Error processing settings: {str(e)}"})
