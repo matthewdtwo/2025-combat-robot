@@ -42,8 +42,14 @@ last_command_time = ticks_ms()
 def update_servo_position(position_type="off"):
     """Update servo position directly using cached values"""
     position = servo_positions.get(position_type, servo_positions["off"])
-    # Changed scaling from 1023 to 100 for duty cycle
-    weapon_servo.duty(int(position * 100 / 180))
+    
+    # MicroPython PWM duty is 0-1023, standard servo range is ~25-115
+    # Convert degrees (0-180) to servo pulse width (25-115)
+    duty = int(25 + (position / 180) * 90)
+    duty = max(25, min(115, duty))  # Ensure duty within valid range
+    
+    # Removed logging line that showed servo position
+    weapon_servo.duty(duty)
 
 # Set initial servo position
 update_servo_position("off")
@@ -82,11 +88,12 @@ check_wifi.init(period=250, mode=machine.Timer.PERIODIC, callback=check_wifi_con
 
 def check_weapon_status(timer):
     global WEAPON_ARMED
+    global WEAPON_ACTIVE
     global weapon_servo
 
     if WEAPON_ACTIVE and WEAPON_ARMED:
         set_leds(WEAPON, BLUE if WEAPON_ARMED else RED)
-        print('Weapon Active')
+        # Removed debugging print statement
         # Use cached servo positions instead of loading from file
         update_servo_position("on")
         led.value(0)
@@ -120,13 +127,24 @@ def handle_command(path, request_type='GET', body=None):
             return get_status()
         elif path.startswith('/button/'):
             last_command_time = ticks_ms()
-            state = path.split('/')[-1]
+            # Handle query parameters if any
+            clean_path = path.split('?')[0]
+            state = clean_path.split('/')[-1]
+            
             if state == 'press':
                 WEAPON_ACTIVE = True
+                # Force immediate servo update for more responsive toggling
+                update_servo_position("on")
+                # Add some debug output to verify command receipt
+                print("Button press received - activating weapon")
             else:
                 WEAPON_ACTIVE = False
+                # Force immediate servo update for more responsive toggling
+                update_servo_position("off")
+                # Add some debug output to verify command receipt
+                print("Button release received - deactivating weapon")
             return 'OK'
-        
+            
         elif path.startswith('/joystick/'):
             last_command_time = ticks_ms()
             _, x, y = path.split('/')[-3:]
@@ -139,7 +157,9 @@ def handle_command(path, request_type='GET', body=None):
             
         elif path == '/servo/settings':
             if request_type == 'GET':
-                return json.dumps(load_settings())
+                # Include toggle_weapon in the settings response
+                settings = load_settings()
+                return json.dumps(settings)
             elif request_type == 'POST' and body:
                 try:
                     settings = json.loads(body)
@@ -149,6 +169,7 @@ def handle_command(path, request_type='GET', body=None):
                     if 'on' not in settings['servo1'] or 'off' not in settings['servo1']:
                         return json.dumps({"error": "Missing on/off values for servo1"})
                     
+                    # Save all settings including toggle_weapon
                     save_settings(settings)
                     
                     # Update cached servo positions
@@ -157,6 +178,12 @@ def handle_command(path, request_type='GET', body=None):
                     
                     REVERSE_STEERING = settings.get("reverse_steering", False)
                     REVERSE_FORWARD = settings.get("reverse_motors", False)
+                    
+                    # Apply the new servo positions immediately if weapon is active
+                    if WEAPON_ACTIVE:
+                        update_servo_position("on")
+                    else:
+                        update_servo_position("off")
                                         
                     return json.dumps({"success": "Settings saved successfully"})
                 except Exception as e:

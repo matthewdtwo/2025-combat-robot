@@ -56,15 +56,28 @@
             height: 120px;
             text-align: center;
             font-size: 16px;
+            font-weight: bold;
             margin: 15px;
             cursor: pointer;
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .button.weapon-active {
+            background-color: #ff4d4d;
+            box-shadow: 0 0 15px #ff4d4d, 0 0 30px rgba(255, 77, 77, 0.5);
+            transform: scale(1.05);
         }
 
         .button.disabled {
             background-color: #cccccc;
             cursor: not-allowed;
             pointer-events: none;
+            box-shadow: none;
         }
 
         #joystick {
@@ -413,15 +426,78 @@
     </style>
     <script>
         function sendCommand(url) {
-            fetch(url).catch(err => console.error('Command error:', err));
+            return fetch(url).catch(err => console.error('Command error:', err));
+        }
+
+        // Global variable to track weapon state when in toggle mode
+        let weaponActive = false;
+        let toggleWeaponMode = false;
+
+        // Function to update weapon state and appearance
+        function updateWeaponState(active) {
+            console.log(`Setting weapon state to: ${active ? 'ACTIVE' : 'INACTIVE'}`);
+            weaponActive = active;
+            
+            // Update button appearance
+            const button = document.querySelector('.button');
+            if (weaponActive) {
+                button.classList.add('weapon-active');
+                button.innerText = "WEAPON\nACTIVE";
+            } else {
+                button.classList.remove('weapon-active');
+                button.innerText = toggleWeaponMode ? "WEAPON\nINACTIVE" : "";
+            }
+            
+            // Send command to update physical weapon - with timestamp to prevent caching
+            if (weaponActive) {
+                return sendCommand('/button/press?' + Date.now());
+            } else {
+                return sendCommand('/button/release?' + Date.now());
+            }
         }
 
         function buttonPress() {
-            sendCommand('/button/press');
+            if (toggleWeaponMode) {
+                // In toggle mode, alternate weapon state
+                // Force direct call to backend to ensure command is sent
+                if (!weaponActive) {
+                    sendCommand('/button/press?' + Date.now())
+                      .then(() => {
+                          weaponActive = true;
+                          const button = document.querySelector('.button');
+                          button.classList.add('weapon-active');
+                          button.innerText = "WEAPON\nACTIVE";
+                      });
+                } else {
+                    sendCommand('/button/release?' + Date.now())
+                      .then(() => {
+                          weaponActive = false;
+                          const button = document.querySelector('.button');
+                          button.classList.remove('weapon-active');
+                          button.innerText = "WEAPON\nINACTIVE";
+                      });
+                }
+            } else {
+                // In normal mode, just activate weapon and update appearance
+                sendCommand('/button/press');
+                // Update button visual state for non-toggle mode
+                const button = document.querySelector('.button');
+                button.classList.add('weapon-active');
+                button.innerText = "WEAPON\nACTIVE";
+                weaponActive = true;
+            }
         }
 
         function buttonRelease() {
-            sendCommand('/button/release');
+            // Only deactivate weapon in normal mode (not toggle mode)
+            if (!toggleWeaponMode) {
+                sendCommand('/button/release');
+                // Reset button visual state for non-toggle mode
+                const button = document.querySelector('.button');
+                button.classList.remove('weapon-active');
+                button.innerText = "";
+                weaponActive = false;
+            }
         }
 
         function sendJoystickPosition(x, y) {
@@ -442,6 +518,11 @@
 
             function setButtonState(enabled) {
                 button.classList.toggle('disabled', !enabled);
+                
+                // If we're enabling the button and in toggle mode, show appropriate text
+                if (enabled && toggleWeaponMode && !weaponActive) {
+                    button.innerText = "WEAPON\nINACTIVE";
+                }
             }
 
             joystick.addEventListener('mousedown', startDrag);
@@ -509,6 +590,11 @@
                 knob.style.top = '50%';
                 output.textContent = 'X: 0.00, Y: 0.00';
                 sendJoystickPosition(0.00, 0.00);
+                
+                // Turn off weapon when joystick is released, if it's active
+                if (toggleWeaponMode && weaponActive) {
+                    updateWeaponState(false);
+                }
             }
         }
 
@@ -547,6 +633,27 @@
                     // Set toggle switches
                     document.getElementById('reverseSteeringToggle').checked = settings.reverse_steering || false;
                     document.getElementById('reverseMotorsToggle').checked = settings.reverse_motors || false;
+                    document.getElementById('toggleWeaponToggle').checked = settings.toggle_weapon || false;
+                    
+                    // Update global toggle mode variable
+                    const wasToggleMode = toggleWeaponMode;
+                    toggleWeaponMode = settings.toggle_weapon || false;
+                    
+                    console.log(`Toggle weapon mode: ${toggleWeaponMode}`);
+                    
+                    // If weapon is active but toggle mode changed, ensure correct state
+                    if (wasToggleMode !== toggleWeaponMode && weaponActive) {
+                        // Need to reset weapon state
+                        updateWeaponState(false);
+                    }
+                    
+                    // Update button text based on toggle mode
+                    const button = document.querySelector('.button');
+                    if (toggleWeaponMode && !weaponActive && !button.classList.contains('disabled')) {
+                        button.innerText = "WEAPON\nINACTIVE";
+                    } else if (!toggleWeaponMode && !weaponActive) {
+                        button.innerText = "";
+                    }
                 }
             } catch (err) {
                 console.error('Error loading settings:', err);
@@ -561,8 +668,20 @@
                     off: parseInt(document.getElementById('servo1Off').value)
                 },
                 reverse_steering: document.getElementById('reverseSteeringToggle').checked,
-                reverse_motors: document.getElementById('reverseMotorsToggle').checked
+                reverse_motors: document.getElementById('reverseMotorsToggle').checked,
+                toggle_weapon: document.getElementById('toggleWeaponToggle').checked
             };
+            
+            // Update global toggle mode variable
+            const wasToggleMode = toggleWeaponMode;
+            toggleWeaponMode = settings.toggle_weapon;
+            
+            console.log(`Toggle weapon mode changed: ${wasToggleMode} -> ${toggleWeaponMode}`);
+            
+            // If turning off toggle mode and weapon is active, make sure to turn it off
+            if (wasToggleMode && !toggleWeaponMode && weaponActive) {
+                await updateWeaponState(false);
+            }
 
             try {
                 const response = await fetch('/servo/settings', {
@@ -574,6 +693,14 @@
                 });
 
                 if (response.ok) {
+                    // After saving settings successfully, ensure weapon state is updated if needed
+                    if (weaponActive) {
+                        // Re-apply weapon state to ensure servo moves to correct position with new settings
+                        setTimeout(() => {
+                            updateWeaponState(true);
+                        }, 300);  // Longer delay to ensure settings are applied
+                    }
+                    
                     alert('Settings saved successfully!');
                     document.getElementById('settingsModal').style.display = 'none';
                 } else {
@@ -587,6 +714,20 @@
 
         window.onload = function () {
             initJoystick();
+            
+            // Ensure weapon starts in the off state and ensure toggle mode is loaded
+            loadServoSettings().then(() => {
+                updateWeaponState(false);
+                
+                // Add pulsing animation for the status check
+                if (toggleWeaponMode) {
+                    const button = document.querySelector('.button');
+                    if (!button.classList.contains('disabled')) {
+                        button.innerText = "WEAPON\nINACTIVE";
+                    }
+                }
+            });
+            
             const button = document.querySelector('.button');
             button.addEventListener('mousedown', function (event) {
                 event.preventDefault();
@@ -607,6 +748,24 @@
 
             // Start status polling
             statusInterval = setInterval(updateStatus, 100);
+            
+            // Add a periodic check to ensure weapon state is correct with increased frequency
+            setInterval(function() {
+                if (toggleWeaponMode) {
+                    // Periodically resend the command to ensure correct position
+                    if (weaponActive) {
+                        sendCommand('/button/press?' + Date.now())
+                          .then(() => {
+                              // Add brief visual feedback for the status check
+                              const button = document.querySelector('.button');
+                              if (button && !button.classList.contains('disabled')) {
+                                  button.style.opacity = '0.8';
+                                  setTimeout(() => { button.style.opacity = '1'; }, 200);
+                              }
+                          });
+                    }
+                }
+            }, 2000); // Check every 2 seconds - less frequent to reduce strain
 
             // Settings modal handling
             const modal = document.getElementById('settingsModal');
@@ -712,6 +871,13 @@
                     <span class="toggle-label">Reverse Motors</span>
                     <label class="switch">
                         <input type="checkbox" id="reverseMotorsToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-group">
+                    <span class="toggle-label">Toggle Weapon Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleWeaponToggle">
                         <span class="slider"></span>
                     </label>
                 </div>
