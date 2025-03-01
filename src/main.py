@@ -157,7 +157,7 @@ def handle_command(path, request_type='GET', body=None):
             
         elif path == '/servo/settings':
             if request_type == 'GET':
-                # Include toggle_weapon in the settings response
+                # Include all settings in the response
                 settings = load_settings()
                 return json.dumps(settings)
             elif request_type == 'POST' and body:
@@ -169,7 +169,13 @@ def handle_command(path, request_type='GET', body=None):
                     if 'on' not in settings['servo1'] or 'off' not in settings['servo1']:
                         return json.dumps({"error": "Missing on/off values for servo1"})
                     
-                    # Save all settings including toggle_weapon
+                    # Ensure WiFi settings exist
+                    if 'wifi' not in settings:
+                        # Load existing WiFi settings if not provided
+                        existing = load_settings()
+                        settings['wifi'] = existing.get('wifi', {})
+                    
+                    # Save all settings
                     save_settings(settings)
                     
                     # Update cached servo positions
