@@ -423,6 +423,13 @@
                 height: 80px;
             }
         }
+
+        /* Add section divider */
+        .settings-section {
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
     </style>
     <script>
         function sendCommand(url) {
@@ -635,6 +642,12 @@
                     document.getElementById('reverseMotorsToggle').checked = settings.reverse_motors || false;
                     document.getElementById('toggleWeaponToggle').checked = settings.toggle_weapon || false;
                     
+                    // Set WiFi settings
+                    if (settings.wifi) {
+                        document.getElementById('wifiApName').value = settings.wifi.ap_name || '';
+                        document.getElementById('wifiApPass').value = settings.wifi.ap_pass || '';
+                    }
+                    
                     // Update global toggle mode variable
                     const wasToggleMode = toggleWeaponMode;
                     toggleWeaponMode = settings.toggle_weapon || false;
@@ -669,7 +682,11 @@
                 },
                 reverse_steering: document.getElementById('reverseSteeringToggle').checked,
                 reverse_motors: document.getElementById('reverseMotorsToggle').checked,
-                toggle_weapon: document.getElementById('toggleWeaponToggle').checked
+                toggle_weapon: document.getElementById('toggleWeaponToggle').checked,
+                wifi: {
+                    ap_name: document.getElementById('wifiApName').value,
+                    ap_pass: document.getElementById('wifiApPass').value
+                }
             };
             
             // Update global toggle mode variable
@@ -701,7 +718,7 @@
                         }, 300);  // Longer delay to ensure settings are applied
                     }
                     
-                    alert('Settings saved successfully!');
+                    alert('Settings saved successfully! WiFi changes will take effect after reboot.');
                     document.getElementById('settingsModal').style.display = 'none';
                 } else {
                     alert('Failed to save settings: ' + await response.text());
@@ -880,6 +897,19 @@
                         <input type="checkbox" id="toggleWeaponToggle">
                         <span class="slider"></span>
                     </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>WiFi Settings</h3>
+                <p class="note">Note: Changes will require reboot to take effect</p>
+                <div class="input-group">
+                    <label for="wifiApName">Access Point Name:</label>
+                    <input type="text" id="wifiApName" placeholder="Robot-AP">
+                </div>
+                <div class="input-group">
+                    <label for="wifiApPass">Password (optional):</label>
+                    <input type="password" id="wifiApPass" placeholder="Leave blank for open network">
                 </div>
             </div>
 
