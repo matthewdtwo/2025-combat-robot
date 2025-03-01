@@ -1,7 +1,7 @@
 Webpage View
 ![webpage](image.png)
 
-
+![configuration](config.png)
 
 Upload ./src/* to ./* on the ESP32C3
 
