@@ -1,9 +1,3 @@
-# setup wifi
-# NOTE: These values are defined but not used in main.py
-WIRELESS_AP_NAME = "ESP-AP"
-WIRELESS_AP_PASS = ""
-
-
 # setup motors
 LEFT_MOTOR_IN1 = 0
 LEFT_MOTOR_IN2 = 1
@@ -20,5 +14,5 @@ WEAPON1_ON = 20
 
 # setup leds
 ONBOARD_LED_PIN = 8
-LED_STRIP_PIN = 9  # Defined but may not be used in current code
+LED_STRIP_PIN = 9 
 
