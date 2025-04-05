@@ -19,8 +19,13 @@ ap_password = wifi_settings.get("ap_pass", "")
 weapon_servo = machine.PWM(machine.Pin(WEAPON1_PIN))
 weapon_servo.freq(50)  # 50 Hz for servo control
 
+# Properly set the servo to its off position
 servo1 = settings.get("servo1", {})
-weapon_servo.duty(int(servo1.get("off", WEAPON1_OFF) * 1023 / 180))
+off_position = servo1.get("off", WEAPON1_OFF)
+# Convert degrees to duty cycle (25-115 range for MicroPython)
+duty = int(25 + (off_position / 180) * 90)
+duty = max(25, min(115, duty))  # Ensure duty within valid range
+weapon_servo.duty(duty)
 
 wake_animation()
 
